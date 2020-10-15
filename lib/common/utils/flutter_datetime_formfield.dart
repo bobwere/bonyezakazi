@@ -1,0 +1,219 @@
+library flutter_datetime_formfield;
+
+import 'package:bonyeza_kazi/common/constants/style.dart';
+import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:intl/intl.dart';
+import 'dart:io' show Platform;
+
+/// A date time pick form field widget.
+class DateTimeFormField extends StatelessWidget {
+  /// The initial date time, default value is 'DateTime.now()'.
+  final DateTime initialValue;
+
+  /// Save value function of form field.
+  final FormFieldSetter<DateTime> onSaved;
+
+  /// Validate function of form field.
+  final FormFieldValidator<DateTime> validator;
+
+  /// Whether validate every time, default value is false.
+  final bool autovalidate;
+  final bool enabled;
+
+  /// The label of form field, default value is 'Date Time'.
+  final String label;
+
+  /// The format of displaying date time in form field, default value is 'DateFormat("EE, MMM d, yyyy h:mma")' in date and time mode,
+  /// 'DateFormat("EEE, MMM d, yyyy")' in date only mode,
+  /// 'DateFormat("h:mm a") in time only mode.
+  final DateFormat formatter;
+
+  /// Only show and edit date, default value is false.
+  final bool onlyDate;
+
+  /// Only show and edit time, default value is false. [onlyDate] and [onlyTime] cannot be set to true at the same time.
+  final bool onlyTime;
+
+  /// The first date time of picking, default value is 'DateTime(1970)'.
+  final DateTime firstDate;
+
+  /// The last date time of picking, default value is 'DateTime(2100)'.
+  final DateTime lastDate;
+
+  /// Create a DateTimeFormField.
+  /// The [onlyDate] and [onlyTime] arguments can not be set to true at the same time.
+  DateTimeFormField({
+    @required DateTime initialValue,
+    @required String label,
+    DateFormat formatter,
+    this.onSaved,
+    this.validator,
+    this.autovalidate: false,
+    this.enabled: true,
+    this.onlyDate: false,
+    this.onlyTime: false,
+    DateTime firstDate,
+    DateTime lastDate,
+  })  : assert(!onlyDate || !onlyTime),
+        initialValue = initialValue ?? DateTime.now(),
+        label = label ?? "Date Time",
+        formatter = formatter ??
+            (onlyDate
+                ? DateFormat("EEE, MMM d, yyyy")
+                : (onlyTime
+                    ? DateFormat("h:mm a")
+                    : DateFormat("EE, MMM d, yyyy h:mma"))),
+        firstDate = firstDate ?? DateTime(1970),
+        lastDate = lastDate ?? DateTime(2100);
+
+  @override
+  Widget build(BuildContext context) {
+    return FormField<DateTime>(
+      validator: validator,
+      autovalidate: autovalidate,
+      initialValue: initialValue,
+      onSaved: onSaved,
+      enabled: enabled,
+      builder: (FormFieldState state) {
+        return InkWell(
+          child: Container(
+            height: 85.h,
+            padding: EdgeInsets.only(left: 25.h),
+            margin: EdgeInsets.symmetric(horizontal: 20.h),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: new BorderRadius.circular(15.h),
+              boxShadow: [
+                BoxShadow(
+                    color: kBoxShadowColor.shade500,
+                    blurRadius: kBoxShadowBlur,
+                    offset: kBoxShadowOffset)
+              ],
+            ),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: InputDecorator(
+                decoration: InputDecoration(
+                  labelText: label,
+                  errorText: state.errorText,
+                  border: InputBorder.none,
+                ),
+                child: Text(formatter.format(state.value)),
+              ),
+            ),
+          ),
+          onTap: () async {
+            DateTime date;
+            TimeOfDay time = TimeOfDay(hour: 0, minute: 0);
+            if (onlyDate) {
+              if (Platform.isAndroid) {
+                date = await showDatePicker(
+                  context: context,
+                  initialDate: state.value,
+                  firstDate: firstDate,
+                  lastDate: lastDate,
+                );
+                if (date != null) {
+                  state.didChange(date);
+                }
+              } else {
+                showModalBottomSheet(
+                  context: context,
+                  builder: (BuildContext builder) {
+                    return Container(
+                      height: MediaQuery.of(context).size.height / 4,
+                      child: CupertinoDatePicker(
+                        mode: CupertinoDatePickerMode.date,
+                        onDateTimeChanged: (DateTime dateTime) =>
+                            state.didChange(dateTime),
+                        initialDateTime: state.value,
+                        minimumYear: firstDate.year,
+                        maximumYear: lastDate.year,
+                      ),
+                    );
+                  },
+                );
+              }
+            } else if (onlyTime) {
+              if (Platform.isAndroid) {
+                time = await showTimePicker(
+                  context: context,
+                  initialTime: TimeOfDay.fromDateTime(state.value),
+                );
+                if (time != null) {
+                  state.didChange(DateTime(
+                    initialValue.year,
+                    initialValue.month,
+                    initialValue.day,
+                    time.hour,
+                    time.minute,
+                  ));
+                }
+              } else {
+                showModalBottomSheet(
+                  context: context,
+                  builder: (BuildContext builder) {
+                    return Container(
+                      height: MediaQuery.of(context).size.height / 4,
+                      child: CupertinoDatePicker(
+                        mode: CupertinoDatePickerMode.time,
+                        onDateTimeChanged: (DateTime dateTime) =>
+                            state.didChange(dateTime),
+                        initialDateTime: state.value,
+                        use24hFormat: false,
+                        minuteInterval: 1,
+                      ),
+                    );
+                  },
+                );
+              }
+            } else {
+              if (Platform.isAndroid) {
+                date = await showDatePicker(
+                  context: context,
+                  initialDate: state.value,
+                  firstDate: firstDate,
+                  lastDate: lastDate,
+                );
+                if (date != null) {
+                  time = await showTimePicker(
+                    context: context,
+                    initialTime: TimeOfDay.fromDateTime(state.value),
+                  );
+                  if (time != null) {
+                    state.didChange(DateTime(
+                      date.year,
+                      date.month,
+                      date.day,
+                      time.hour,
+                      time.minute,
+                    ));
+                  }
+                }
+              } else {
+                showModalBottomSheet(
+                  context: context,
+                  builder: (BuildContext builder) {
+                    return Container(
+                      height: MediaQuery.of(context).size.height / 4,
+                      child: CupertinoDatePicker(
+                        mode: CupertinoDatePickerMode.dateAndTime,
+                        onDateTimeChanged: (DateTime dateTime) =>
+                            state.didChange(dateTime),
+                        initialDateTime: state.value,
+                        use24hFormat: false,
+                        minuteInterval: 1,
+                      ),
+                    );
+                  },
+                );
+              }
+            }
+          },
+        );
+      },
+    );
+  }
+}
